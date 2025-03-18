@@ -1,0 +1,24 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="120" height="120" rx="24" fill="url(#gradient)" />
+  
+  <!-- 'A' letter -->
+  <path d="M37 83V37H60C67.1797 37 72.7396 38.6484 76.6797 41.9453C80.6198 45.2422 82.5898 49.7266 82.5898 55.3984C82.5898 61.0703 80.6198 65.5547 76.6797 68.8516C72.7396 72.1484 67.1797 73.7969 60 73.7969H48.3398V83H37ZM48.3398 64.4961H60C62.7865 64.4961 64.9349 63.7487 66.4453 62.2539C67.9557 60.7591 68.7109 58.5417 68.7109 55.6016C68.7109 52.6615 67.9557 50.4362 66.4453 48.9258C64.9349 47.4154 62.7865 46.6602 60 46.6602H48.3398V64.4961Z" fill="white"/>
+  
+  <!-- Bar chart -->
+  <rect x="35" y="90" width="10" height="15" rx="2" fill="#FFFFFF" />
+  <rect x="55" y="85" width="10" height="20" rx="2" fill="#FFFFFF" />
+  <rect x="75" y="80" width="10" height="25" rx="2" fill="#FFFFFF" />
+  
+  <!-- Up arrow -->
+  <path d="M90 45L97 52L84 52L90 45Z" fill="#FFFFFF" />
+  <rect x="87" y="52" width="6" height="20" rx="2" fill="#FFFFFF" />
+  
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4F46E5" />
+      <stop offset="1" stop-color="#7C3AED" />
+    </linearGradient>
+  </defs>
+</svg> 
