@@ -16,6 +16,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
+import ScreenshotAnalysis from '@/components/ScreenshotAnalysis';
 
 ChartJS.register(
   CategoryScale,
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [appData, setAppData] = useState<ParsedAppData | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'growth'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'screenshots'>('summary');
   const [selectedMetadata, setSelectedMetadata] = useState<{
     title: string | null;
     subtitle: string | null;
@@ -100,6 +101,9 @@ export default function Dashboard() {
       return;
     }
     
+    // Set flag first to indicate that calculations have started
+    setProjectionsCalculated(true);
+    
     // Collect all keywords from the selected metadata
     const allSelectedKeywords = new Set<string>();
     
@@ -118,19 +122,25 @@ export default function Dashboard() {
       .forEach(keyword => allSelectedKeywords.add(keyword.toLowerCase()));
     
     // Find matching keywords in the dataset
-    const matchingKeywords = appData.keywords.filter(k => 
+    let matchingKeywords = appData.keywords.filter(k => 
       Array.from(allSelectedKeywords).some(selected => 
         k.keyword.toLowerCase().includes(selected) || 
         selected.includes(k.keyword.toLowerCase())
       )
     );
     
+    // Log for debugging
+    console.log('Selected keywords:', Array.from(allSelectedKeywords));
+    console.log('Matching keywords found:', matchingKeywords.length);
+    
     if (matchingKeywords.length === 0) {
-      // If no exact matches, use closest matches
-      matchingKeywords.push(...appData.keywords
+      // If no exact matches, use keywords with highest volume
+      matchingKeywords = appData.keywords
         .filter(k => k.volume !== undefined)
         .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-        .slice(0, 5));
+        .slice(0, 5);
+      
+      console.log('Falling back to top volume keywords:', matchingKeywords.map(k => k.keyword));
     }
     
     // Calculate new projections
@@ -200,12 +210,15 @@ export default function Dashboard() {
       downloads.push(Math.round(totalDownloads));
     });
     
+    // Update state with calculated projections
     setDynamicProjections({
       downloads,
       rankImprovements
     });
     
-    setProjectionsCalculated(true);
+    // Log results without alert disruption
+    console.log(`Projections calculated: Found ${matchingKeywords.length} matching keywords.`);
+    console.log(`Estimated additional downloads after 3 months: ${downloads[0].toLocaleString()}`);
   };
 
   // Render file upload UI if no data is loaded
@@ -346,33 +359,43 @@ export default function Dashboard() {
           
           {/* Navigation Tabs */}
           <div className="mt-6 border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
+            <nav className="flex -mb-px space-x-8">
               <button
-                onClick={() => setActiveTab('summary')}
-                className={`${
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'summary'
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                }`}
+                onClick={() => setActiveTab('summary')}
               >
-                Keyword Insights
+                Summary
               </button>
               <button
-                onClick={() => setActiveTab('metadata')}
-                className={`${
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'metadata'
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                }`}
+                onClick={() => setActiveTab('metadata')}
               >
-                Metadata & Growth
+                ASO Metadata
+              </button>
+              <button
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'screenshots'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+                onClick={() => setActiveTab('screenshots')}
+              >
+                Screenshot Analysis
               </button>
             </nav>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Keyword Insights Tab */}
         {activeTab === 'summary' && (
           <div className="space-y-8">
@@ -699,7 +722,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Metadata Recommendations Tab */}
+        {/* Metadata & ASO Tab */}
         {activeTab === 'metadata' && (
           <div className="space-y-8">
             {/* Introduction */}
@@ -877,7 +900,9 @@ export default function Dashboard() {
                       </div>
                       <div className="mt-4">
                         <button
-                          onClick={calculateProjections}
+                          onClick={() => {
+                            calculateProjections();
+                          }}
                           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
                           <svg className="mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -891,276 +916,329 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
-            {/* Growth Projections Section */}
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-2">
-                Growth Projections Based on Selected Metadata
-              </h2>
-              <p className="text-gray-700">
-                These projections show <span className="font-medium">additional installs</span> on top of your current organic installs
-                based on expected keyword ranking improvements from implementing the selected metadata combination.
-              </p>
-              {(!selectedMetadata.title || !selectedMetadata.subtitle || !selectedMetadata.keywordField) ? (
-                <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        Please select recommendations for all metadata fields to see growth projections.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : !projectionsCalculated ? (
-                <div className="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-blue-700">
-                        Click the "Calculate Projections" button to analyze your selected metadata and generate growth projections.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
 
-              {/* Rank-Install Correlation Table */}
-              {projectionsCalculated && (
-                <div className="mt-6 space-y-8">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">
-                      Rank Improvement to Install Correlation
+            {/* Projections Section */}
+            {projectionsCalculated && (
+              <div id="projection-result" className="mt-6 bg-gradient-to-r from-indigo-50 to-indigo-100 border border-indigo-200 overflow-hidden rounded-lg">
+                <div className="p-6">
+                  <div className="space-y-8">
+                    <h3 className="text-lg font-medium text-indigo-900 flex items-center mb-6">
+                      <svg className="mr-2 h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Growth Projections Based on Selected Metadata
                     </h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Keyword
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Current Rank
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Projected Rank (3mo)
-                            </th>
-                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Est. Additional Installs
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {Object.entries(
-                            Object.keys(dynamicProjections.rankImprovements).length > 0 
-                              ? dynamicProjections.rankImprovements 
-                              : analysisResult.projections.projectedRankImprovements
-                          )
-                            .slice(0, 5) // Show top 5 keywords
-                            .map(([keyword, ranks], index) => {
-                              const currentKeyword = appData.keywords.find(k => k.keyword === keyword);
-                              const currentRank = currentKeyword?.currentRank || 100;
-                              const projectedRank = Math.round(ranks[2] || currentRank / 2); // 3-month projection (index 2)
-                              
-                              // Calculate estimated installs
-                              const volume = currentKeyword?.volume || 100;
-                              const estimateConversionRate = (rank: number): number => {
-                                if (rank <= 1) return 0.12;
-                                if (rank <= 3) return 0.08;
-                                if (rank <= 5) return 0.05;
-                                if (rank <= 10) return 0.03;
-                                if (rank <= 20) return 0.01;
-                                if (rank <= 50) return 0.005;
-                                return 0.001;
-                              };
-                              
-                              const currentConversion = estimateConversionRate(currentRank);
-                              const projectedConversion = estimateConversionRate(projectedRank);
-                              const currentInstalls = Math.round(volume * currentConversion * 30);
-                              const projectedInstalls = Math.round(volume * projectedConversion * 30);
-                              const additionalInstalls = projectedInstalls - currentInstalls;
-                              
-                              return (
-                                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{keyword}</td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                    {typeof currentRank === 'number' ? `#${currentRank}` : 'Not Ranked'}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                    <div className="flex items-center">
-                                      <span className="font-medium">#{projectedRank}</span>
-                                      <span className="ml-2 text-xs text-green-600 flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                                        </svg>
-                                        {Math.round(Number(currentRank) - projectedRank)}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                    <div>
-                                      <span className="font-medium text-green-600">+{additionalInstalls.toLocaleString()}</span>
-                                      <div className="mt-1 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                        <div 
-                                          className="h-full bg-green-500 rounded-full" 
-                                          style={{ width: `${Math.min(100, (additionalInstalls / (volume * 0.12 * 30)) * 100)}%` }}
-                                        ></div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Projection Charts */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Download Projections Chart */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-md font-medium text-gray-900 mb-4">
-                        Additional Downloads Over Time
-                      </h3>
-                      <div className="h-64">
-                        <Bar 
-                          data={{
-                            labels: analysisResult.projections.timeframes.map(t => `${t} ${t === 1 ? 'Month' : 'Months'}`),
-                            datasets: [
-                              {
-                                label: 'Additional Installs',
-                                data: dynamicProjections.downloads.length > 0 
-                                  ? dynamicProjections.downloads 
-                                  : analysisResult.projections.projectedDownloads,
-                                backgroundColor: 'rgba(99, 102, 241, 0.5)',
-                                borderColor: 'rgb(99, 102, 241)',
-                                borderWidth: 1,
-                              }
-                            ]
-                          }}
-                          options={{
-                            responsive: true,
-                            plugins: {
-                              legend: {
-                                display: false,
-                              },
-                              tooltip: {
-                                callbacks: {
-                                  label: function(context) {
-                                    const value = context.raw as number;
-                                    return `Additional: ${value.toLocaleString()}`;
-                                  }
-                                }
-                              }
-                            },
-                            scales: {
-                              y: {
-                                beginAtZero: true,
-                                ticks: {
-                                  callback: function(value) {
-                                    return Number(value).toLocaleString();
-                                  }
-                                }
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
                     
-                    {/* Keyword Improvement Chart */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-md font-medium text-gray-900 mb-4">
-                        Keyword Rank Improvement
-                      </h3>
-                      <div className="h-64">
-                        <Line 
-                          data={{
-                            labels: analysisResult.projections.timeframes.map(t => `${t} ${t === 1 ? 'Month' : 'Months'}`),
-                            datasets: Object.entries(
-                              Object.keys(dynamicProjections.rankImprovements).length > 0 
-                                ? dynamicProjections.rankImprovements 
-                                : analysisResult.projections.projectedRankImprovements
-                            )
-                              .slice(0, 3) // Show top 3 keywords for clarity
-                              .map(([keyword, ranks], index) => {
-                                const colors = [
-                                  'rgba(99, 102, 241, 1)', // indigo
-                                  'rgba(16, 185, 129, 1)', // green
-                                  'rgba(245, 158, 11, 1)' // amber
-                                ];
-                                
-                                return {
-                                  label: keyword,
-                                  data: ranks,
-                                  borderColor: colors[index % colors.length],
-                                  backgroundColor: 'transparent',
-                                  tension: 0.4
-                                };
-                              })
-                          }}
-                          options={{
-                            responsive: true,
-                            plugins: {
-                              tooltip: {
-                                callbacks: {
-                                  label: function(context) {
-                                    return `${context.dataset.label}: Rank #${Math.round(context.raw as number)}`;
-                                  }
-                                }
-                              }
-                            },
-                            scales: {
-                              y: {
-                                reverse: true, // Lower rank numbers are better
-                                title: {
-                                  display: true,
-                                  text: 'Rank Position'
-                                }
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-indigo-50 rounded-lg p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <h3 className="text-sm font-medium text-indigo-800">How projections work</h3>
-                        <div className="mt-2 text-sm text-indigo-700">
-                          <p>
-                            The projections show additional installs (beyond your current organic numbers) based on:
-                          </p>
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            <li>Keyword ranking improvements from your selected metadata</li>
-                            <li>Standard conversion rates by rank position</li>
-                            <li>The specific keywords in your selected title, subtitle, and keyword field</li>
-                          </ul>
+                    {dynamicProjections.downloads.length > 0 ? (
+                      <div className="space-y-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                          <div className="bg-white p-4 rounded-lg shadow-sm">
+                            <div className="text-sm text-gray-500">3 Month Installs</div>
+                            <div className="text-2xl font-bold text-indigo-600">+{dynamicProjections.downloads[0].toLocaleString()}</div>
+                          </div>
+                          {dynamicProjections.downloads.length > 1 && (
+                            <div className="bg-white p-4 rounded-lg shadow-sm">
+                              <div className="text-sm text-gray-500">6 Month Installs</div>
+                              <div className="text-2xl font-bold text-indigo-600">+{dynamicProjections.downloads[1].toLocaleString()}</div>
+                            </div>
+                          )}
+                          {dynamicProjections.downloads.length > 2 && (
+                            <div className="bg-white p-4 rounded-lg shadow-sm">
+                              <div className="text-sm text-gray-500">12 Month Installs</div>
+                              <div className="text-2xl font-bold text-indigo-600">+{dynamicProjections.downloads[2].toLocaleString()}</div>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Charts section */}
+                        <div className="space-y-8">
+                          {/* Install Growth Chart */}
+                          <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <h4 className="text-base font-medium text-gray-800 mb-4">Projected Install Growth Over Time</h4>
+                            <div className="h-80">
+                              <Bar 
+                                data={{
+                                  labels: analysisResult.projections.timeframes.map(t => `${t} ${t === 1 ? 'Month' : 'Months'}`),
+                                  datasets: [{
+                                    label: 'Additional Installs',
+                                    data: dynamicProjections.downloads,
+                                    backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                                    borderColor: 'rgb(99, 102, 241)',
+                                    borderWidth: 1
+                                  }]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                      callbacks: {
+                                        label: function(context) {
+                                          const value = context.raw as number;
+                                          return `Additional: ${value.toLocaleString()} installs`;
+                                        }
+                                      }
+                                    }
+                                  },
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      title: {
+                                        display: true,
+                                        text: 'Additional Installs'
+                                      },
+                                      ticks: {
+                                        callback: function(value) {
+                                          return Number(value).toLocaleString();
+                                        }
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Side-by-side charts */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Rank Improvement Chart */}
+                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                              <h4 className="text-base font-medium text-gray-800 mb-4">Keyword Rank Improvements</h4>
+                              <div className="h-80">
+                                <Line 
+                                  data={{
+                                    labels: analysisResult.projections.timeframes.map(t => `${t} ${t === 1 ? 'Month' : 'Months'}`),
+                                    datasets: Object.entries(dynamicProjections.rankImprovements)
+                                      .slice(0, 5)
+                                      .map(([keyword, ranks], index) => ({
+                                        label: keyword,
+                                        data: ranks,
+                                        borderColor: [
+                                          'rgba(99, 102, 241, 1)',
+                                          'rgba(16, 185, 129, 1)',
+                                          'rgba(245, 158, 11, 1)',
+                                          'rgba(239, 68, 68, 1)',
+                                          'rgba(139, 92, 246, 1)'
+                                        ][index % 5],
+                                        backgroundColor: 'transparent',
+                                        tension: 0.4
+                                      }))
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      tooltip: {
+                                        callbacks: {
+                                          label: function(context) {
+                                            return `${context.dataset.label}: Rank #${Math.round(context.raw as number)}`;
+                                          }
+                                        }
+                                      }
+                                    },
+                                    scales: {
+                                      y: {
+                                        reverse: true,
+                                        title: {
+                                          display: true,
+                                          text: 'Rank Position'
+                                        },
+                                        min: 1,
+                                        max: 100
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Correlation Chart */}
+                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                              <h4 className="text-base font-medium text-gray-800 mb-4">Rank-to-Install Correlation</h4>
+                              <div className="h-80">
+                                <Line 
+                                  data={{
+                                    labels: [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 1],
+                                    datasets: [{
+                                      label: 'Estimated Monthly Installs',
+                                      data: [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 1].map(rank => {
+                                        const estimateConversionRate = (r: number): number => {
+                                          if (r <= 1) return 0.12;
+                                          if (r <= 3) return 0.08;
+                                          if (r <= 5) return 0.05;
+                                          if (r <= 10) return 0.03;
+                                          if (r <= 20) return 0.01;
+                                          if (r <= 50) return 0.005;
+                                          return 0.001;
+                                        };
+                                        
+                                        const avgVolume = Math.round(
+                                          appData.keywords
+                                            .filter(k => k.volume !== undefined)
+                                            .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+                                            .slice(0, 10)
+                                            .reduce((sum, k) => sum + (k.volume || 0), 0) / 10
+                                        );
+                                        
+                                        return avgVolume * estimateConversionRate(rank) * 30;
+                                      }),
+                                      borderColor: 'rgba(16, 185, 129, 1)',
+                                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                      tension: 0.4,
+                                      fill: true
+                                    }]
+                                  }}
+                                  options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                      tooltip: {
+                                        callbacks: {
+                                          label: function(context) {
+                                            const value = context.raw as number;
+                                            return `At Rank #${context.label}: ${Math.round(value).toLocaleString()} installs/month`;
+                                          }
+                                        }
+                                      }
+                                    },
+                                    scales: {
+                                      x: {
+                                        reverse: true,
+                                        title: {
+                                          display: true,
+                                          text: 'Rank Position'
+                                        }
+                                      },
+                                      y: {
+                                        beginAtZero: true,
+                                        title: {
+                                          display: true,
+                                          text: 'Estimated Monthly Installs'
+                                        },
+                                        ticks: {
+                                          callback: function(value) {
+                                            return Number(value).toLocaleString();
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <p className="mt-4 text-sm text-gray-500">
+                                This chart shows the correlation between keyword ranking position and estimated monthly installs.
+                                The higher your keyword ranks, the more installs you can expect.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Keywords table */}
+                        {Object.keys(dynamicProjections.rankImprovements).length > 0 && (
+                          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <h4 className="text-base font-medium text-gray-800 p-4 border-b">Top Keywords with Projected Rank Improvements</h4>
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keyword</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volume</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Rank</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3 Month Rank</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">6 Month Rank</th>
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Est. Monthly Impact</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {Object.entries(dynamicProjections.rankImprovements)
+                                    .slice(0, 10)
+                                    .map(([keyword, ranks], i) => {
+                                      const keywordData = appData.keywords.find(k => k.keyword === keyword);
+                                      const currentRank = keywordData?.currentRank || 100;
+                                      const volume = keywordData?.volume || 100;
+                                      const difficulty = keywordData?.difficulty || 50;
+                                      
+                                      const estimateConversionRate = (rank: number): number => {
+                                        if (rank <= 1) return 0.12;
+                                        if (rank <= 3) return 0.08;
+                                        if (rank <= 5) return 0.05;
+                                        if (rank <= 10) return 0.03;
+                                        if (rank <= 20) return 0.01;
+                                        if (rank <= 50) return 0.005;
+                                        return 0.001;
+                                      };
+                                      
+                                      const currentInstalls = volume * estimateConversionRate(currentRank) * 30;
+                                      const projectedInstalls = volume * estimateConversionRate(Math.round(ranks[0])) * 30;
+                                      const impact = Math.round(projectedInstalls - currentInstalls);
+                                      
+                                      const rankImprovement = currentRank - Math.round(ranks[0]);
+                                      const improvementPercent = Math.round((rankImprovement / currentRank) * 100);
+                                      
+                                      return (
+                                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{keyword}</td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{volume.toLocaleString()}</td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{difficulty}</td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">#{currentRank}</td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                            <div className="flex items-center">
+                                              <span className="text-green-600 font-medium">#{Math.round(ranks[0])}</span>
+                                              {rankImprovement > 0 && (
+                                                <span className="ml-2 text-xs text-green-600 flex items-center">
+                                                  <svg className="h-4 w-4 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                  </svg>
+                                                  {improvementPercent}%
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 font-medium">
+                                            {ranks.length > 1 ? `#${Math.round(ranks[1])}` : '-'}
+                                          </td>
+                                          <td className="px-4 py-3 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                              <span className="text-sm text-indigo-600 font-medium">+{impact.toLocaleString()}</span>
+                                              <div className="ml-2 w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div 
+                                                  className="h-full bg-indigo-500 rounded-full" 
+                                                  style={{ width: `${Math.min(100, (impact / (volume * 0.1 * 30)) * 100)}%` }}
+                                                />
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <div className="mt-2 text-sm text-indigo-800">
+                        <p>No projection data available. This may be due to missing keyword data or insufficient matches.</p>
+                      </div>
+                    )}
+
+                    <div className="bg-indigo-100 px-4 py-3 mt-6">
+                      <p className="text-xs text-indigo-800">
+                        These projections are based on your selected metadata and estimated keyword ranking improvements.
+                        Actual results may vary based on market conditions and competition.
+                      </p>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
+
+        {activeTab === 'screenshots' && <ScreenshotAnalysis />}
       </main>
     </div>
   );

@@ -11,8 +11,11 @@ import {
   Title,
   Tooltip,
   Legend,
+  RadialLinearScale,
+  ArcElement,
+  Filler,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar, Radar, Pie } from 'react-chartjs-2';
 
 // Register Chart.js components
 ChartJS.register(
@@ -21,9 +24,12 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
+  RadialLinearScale,
+  ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 interface KeywordAnalysisProps {
@@ -59,6 +65,8 @@ const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({ keywordData, onKeywor
     nineMonths: 0,
     twelveMonths: 0
   });
+
+  const [chartsView, setChartsView] = useState<'ranking' | 'volume' | 'difficulty' | 'distribution'>('ranking');
 
   // Initial data processing
   useEffect(() => {
@@ -159,7 +167,7 @@ const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({ keywordData, onKeywor
     }
   };
 
-  const renderChart = () => {
+  const renderRankingChart = () => {
     if (!selectedPrediction) return null;
 
     const rankingChartData = {
@@ -196,11 +204,261 @@ const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({ keywordData, onKeywor
     };
 
     return (
+      <div className="bg-white rounded-xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Ranking Predictions</h3>
+        <Line data={rankingChartData} options={{
+          scales: {
+            y: {
+              reverse: true,
+              title: {
+                display: true,
+                text: 'Rank Position',
+              },
+              min: 1,
+              max: Math.max(100, selectedPrediction.currentRank + 10),
+            }
+          }
+        }} />
+      </div>
+    );
+  };
+
+  const renderVolumeChart = () => {
+    // Get top 10 keywords by volume
+    const topByVolume = [...keywordData]
+      .filter(kw => kw.volume !== undefined)
+      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+      .slice(0, 10);
+
+    const volumeChartData = {
+      labels: topByVolume.map(kw => kw.keyword),
+      datasets: [
+        {
+          label: 'Search Volume',
+          data: topByVolume.map(kw => kw.volume || 0),
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgb(54, 162, 235)',
+          borderWidth: 1,
+        }
+      ]
+    };
+
+    return (
+      <div className="bg-white rounded-xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Top Keywords by Volume</h3>
+        <Bar data={volumeChartData} options={{
+          indexAxis: 'y',
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Search Volume',
+              }
+            }
+          }
+        }} />
+      </div>
+    );
+  };
+
+  const renderDifficultyChart = () => {
+    const difficultyRanges = [
+      { label: 'Very Easy (0-20)', count: 0, color: 'rgba(75, 192, 192, 0.7)' },
+      { label: 'Easy (21-40)', count: 0, color: 'rgba(54, 162, 235, 0.7)' },
+      { label: 'Medium (41-60)', count: 0, color: 'rgba(255, 205, 86, 0.7)' },
+      { label: 'Hard (61-80)', count: 0, color: 'rgba(255, 159, 64, 0.7)' },
+      { label: 'Very Hard (81-100)', count: 0, color: 'rgba(255, 99, 132, 0.7)' }
+    ];
+
+    keywordData.forEach(kw => {
+      const difficulty = kw.difficulty || 0;
+      if (difficulty <= 20) difficultyRanges[0].count++;
+      else if (difficulty <= 40) difficultyRanges[1].count++;
+      else if (difficulty <= 60) difficultyRanges[2].count++;
+      else if (difficulty <= 80) difficultyRanges[3].count++;
+      else difficultyRanges[4].count++;
+    });
+
+    const difficultyChartData = {
+      labels: difficultyRanges.map(range => range.label),
+      datasets: [
+        {
+          data: difficultyRanges.map(range => range.count),
+          backgroundColor: difficultyRanges.map(range => range.color),
+          borderWidth: 1,
+        }
+      ]
+    };
+
+    return (
+      <div className="bg-white rounded-xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Keyword Difficulty Distribution</h3>
+        <Pie data={difficultyChartData} options={{
+          plugins: {
+            legend: {
+              position: 'right',
+            },
+          }
+        }} />
+      </div>
+    );
+  };
+
+  const renderKeywordRadarChart = () => {
+    if (!selectedKeyword) return null;
+    const selectedData = keywordData.find(k => k.keyword === selectedKeyword);
+    if (!selectedData) return null;
+
+    const radarData = {
+      labels: ['Volume', 'Difficulty', 'Ranking', 'Relevancy', 'Traffic'],
+      datasets: [
+        {
+          label: selectedKeyword,
+          data: [
+            selectedData.volume ? selectedData.volume / 10 : 0, // Scale down volume
+            selectedData.difficulty || 0,
+            selectedData.currentRank ? 100 - Math.min(selectedData.currentRank, 100) : 0, // Invert rank
+            selectedData.relevancy || 0,
+            selectedData.traffic || 0
+          ],
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgb(75, 192, 192)',
+          pointBackgroundColor: 'rgb(75, 192, 192)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgb(75, 192, 192)',
+          fill: true
+        }
+      ]
+    };
+
+    return (
+      <div className="bg-white rounded-xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Keyword Metrics</h3>
+        <Radar data={radarData} options={{
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 20
+              }
+            }
+          }
+        }} />
+      </div>
+    );
+  };
+
+  const renderCharts = () => {
+    if (!selectedKeyword) return null;
+
+    return (
       <div className="space-y-6">
-        <div className="bg-white rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">Ranking Predictions</h3>
-          <Line data={rankingChartData} />
+        <div className="bg-white rounded-xl overflow-hidden">
+          <div className="flex border-b">
+            <button 
+              className={`px-4 py-3 text-sm font-medium flex-1 ${chartsView === 'ranking' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-700 hover:bg-gray-50'}`}
+              onClick={() => setChartsView('ranking')}
+            >
+              Ranking Projections
+            </button>
+            <button 
+              className={`px-4 py-3 text-sm font-medium flex-1 ${chartsView === 'volume' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-700 hover:bg-gray-50'}`}
+              onClick={() => setChartsView('volume')}
+            >
+              Volume Analysis
+            </button>
+            <button 
+              className={`px-4 py-3 text-sm font-medium flex-1 ${chartsView === 'difficulty' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-700 hover:bg-gray-50'}`}
+              onClick={() => setChartsView('difficulty')}
+            >
+              Difficulty Breakdown
+            </button>
+            <button 
+              className={`px-4 py-3 text-sm font-medium flex-1 ${chartsView === 'distribution' ? 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500' : 'text-gray-700 hover:bg-gray-50'}`}
+              onClick={() => setChartsView('distribution')}
+            >
+              Keyword Metrics
+            </button>
+          </div>
+          
+          <div className="p-4">
+            {chartsView === 'ranking' && renderRankingChart()}
+            {chartsView === 'volume' && renderVolumeChart()}
+            {chartsView === 'difficulty' && renderDifficultyChart()}
+            {chartsView === 'distribution' && renderKeywordRadarChart()}
+          </div>
         </div>
+
+        {/* Target Rank Inputs */}
+        {chartsView === 'ranking' && selectedPrediction && (
+          <div className="bg-white rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4">Set Target Ranks</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">3 Months Target</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetRanks.threeMonths}
+                  onChange={(e) => handleTargetRankChange('threeMonths', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Rank"
+                />
+                {targetRanks.threeMonths && (
+                  <p className="mt-1 text-sm text-green-600">+{targetInstalls.threeMonths} installs</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">6 Months Target</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetRanks.sixMonths}
+                  onChange={(e) => handleTargetRankChange('sixMonths', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Rank"
+                />
+                {targetRanks.sixMonths && (
+                  <p className="mt-1 text-sm text-green-600">+{targetInstalls.sixMonths} installs</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">9 Months Target</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetRanks.nineMonths}
+                  onChange={(e) => handleTargetRankChange('nineMonths', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Rank"
+                />
+                {targetRanks.nineMonths && (
+                  <p className="mt-1 text-sm text-green-600">+{targetInstalls.nineMonths} installs</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">12 Months Target</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={targetRanks.twelveMonths}
+                  onChange={(e) => handleTargetRankChange('twelveMonths', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  placeholder="Rank"
+                />
+                {targetRanks.twelveMonths && (
+                  <p className="mt-1 text-sm text-green-600">+{targetInstalls.twelveMonths} installs</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -247,7 +505,8 @@ const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({ keywordData, onKeywor
               const rankClass = getRankClass(currentRank);
 
               return (
-                <div key={keyword} className="p-4 hover:bg-gray-50 transition-colors">
+                <div key={keyword} className="p-4 hover:bg-gray-50 transition-colors"
+                  onClick={() => setSelectedKeyword(keyword)}>
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900">{keyword}</h4>
                     <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${rankClass}`}>
@@ -342,7 +601,9 @@ const KeywordAnalysis: React.FC<KeywordAnalysisProps> = ({ keywordData, onKeywor
           </li>
         </ul>
       </div>
-      {selectedKeyword && renderChart()}
+
+      {/* Charts Section */}
+      {renderCharts()}
     </div>
   );
 };
