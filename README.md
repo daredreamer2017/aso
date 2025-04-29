@@ -1,108 +1,108 @@
 # ASO Dashboard
 
-A powerful App Store Optimization (ASO) dashboard that helps app developers analyze keyword data, predict ranking improvements, and get actionable recommendations to boost their app's visibility and installs.
+A modern web application for App Store Optimization (ASO) analysis and recommendations. This tool helps you analyze keywords, predict ranking improvements, and get actionable recommendations to boost your app's visibility and performance.
 
 ## Features
 
-- **CSV Upload**: Upload keyword data in CSV format for analysis
-- **Keyword Analysis**: Analyze keyword metrics including volume, difficulty, reach, and current ranking positions
-- **Ranking Predictions**: Predict ranking improvements for 3, 6, 9, and 12 months
-- **Install Impact**: Estimate the impact of ranking improvements on installs
-- **ASO Recommendations**: Get actionable recommendations for keyword placement
-- **AI Metadata Generation**: Generate optimized app store metadata (Title, Subtitle, Keywords) based on selected keywords
+- 📊 Comprehensive keyword analysis
+- 🎯 Ranking predictions and growth projections
+- 💡 AI-powered ASO recommendations
+- 🖼️ Screenshot analysis for visual optimization
+- 🌗 Dark mode support
+- 📱 Responsive design
 
-## Tech Stack
+## Prerequisites
 
-- Next.js 15.2
-- React 19
-- TypeScript
-- TailwindCSS 4
-- Chart.js & React-Chartjs-2
-- Papa Parse for CSV parsing
-- React Dropzone for file uploads
+Before you begin, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (v16.0.0 or higher)
+- [npm](https://www.npmjs.com/) (v7.0.0 or higher) or [yarn](https://yarnpkg.com/)
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+ and npm
-
-### Installation
-
 1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/aso-dashboard.git
-   cd aso-dashboard
-   ```
+```bash
+git clone [your-repository-url]
+cd aso-dashboard
+```
 
 2. Install dependencies:
-   ```
-   npm install
-   ```
+```bash
+npm install
+# or
+yarn install
+```
 
-3. Run the development server:
-   ```
+3. Create a `.env.local` file in the root directory and add your environment variables:
+```env
+# Add any required environment variables here
+```
+
+4. Run the development server:
+```bash
 npm run dev
-   ```
+# or
+yarn dev
+```
 
-4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## Project Structure
+
+```
+aso-dashboard/
+├── src/
+│   ├── app/              # Next.js app directory
+│   ├── components/       # React components
+│   ├── lib/             # Utility functions and services
+│   └── styles/          # Global styles
+├── public/              # Static assets
+├── .env.local           # Environment variables
+└── package.json         # Project dependencies
+```
+
+## Usage
+
+1. Navigate to the dashboard
+2. Upload your CSV file containing keyword data
+3. View comprehensive analysis and recommendations
+4. Generate metadata suggestions
+5. Analyze screenshots and get optimization tips
+6. Export reports and implement recommendations
 
 ## CSV Format
 
-The dashboard expects CSV files with the following columns:
+Your keyword data CSV file should include the following columns:
+- Keyword
+- Search Volume
+- Difficulty
+- Current Rank (optional)
+- Other relevant metrics
 
-- `App Name`: Name of the application
-- `App ID`: Unique identifier for the app
-- `Store`: App store (iOS or Android)
-- `Device`: Device type (e.g., iphone, android)
-- `Country Code`: Country code (e.g., us, uk)
-- `Language Code`: Language code (e.g., en)
-- `Main App ID`: ID of the main app
-- `Main App Name`: Name of the main app
-- `Keyword`: The search term
-- `Keyword List`: List category for the keyword
-- `Starred`: Whether the keyword is starred (TRUE/FALSE)
-- `Volume`: Search volume for the keyword
-- `Difficulty`: How competitive the keyword is (0-100)
-- `Maximum Reach`: Potential reach of the keyword
-- `Branded`: Whether the keyword is branded (TRUE/FALSE)
-- `Branded App ID`: App ID if the keyword is branded
-- `Branded App Name`: App name if the keyword is branded
-- `KEI`: Keyword Efficiency Index
-- `Chance`: Probability of ranking well (0-100)
-- `Relevancy Score`: How relevant the keyword is (0-100)
-- `Current Rank`: Current ranking position of the keyword (optional - will be generated randomly if not provided)
+## Technologies Used
 
-## How It Works
+- [Next.js](https://nextjs.org/) - React framework
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Chart.js](https://www.chartjs.org/) - Data visualization
 
-1. **Upload CSV**: Users upload their keyword CSV file
-2. **Data Processing**: The system parses and processes the data
-3. **Prediction Models**: Algorithms analyze the data to predict future ranking and install impact
-4. **Recommendations**: The system generates recommendations based on keyword metrics
-5. **AI Metadata Generation**: Users can select keywords and generate optimized app store metadata
+## Contributing
 
-## AI Metadata Generation
-
-The AI metadata generator helps create optimized app store metadata:
-
-- **Title**: Up to 30 characters, optimized for visibility
-- **Subtitle**: Up to 30 characters, highlighting key features
-- **Keywords**: Up to 100 characters, comma-separated keywords including trending terms like "sahsah" and "sahseh"
-
-## Prediction Methodology
-
-The prediction models use the following factors:
-- Keyword difficulty
-- Search volume
-- Relevancy score
-- Current ranking position
-- Historical ranking trends (would be included in a production app)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, please open an issue in the GitHub repository or contact the development team.
 
 ## Acknowledgments
 
-- This project was created as a demonstration of app store optimization tools
-- Inspired by professional ASO tools and services
+- Thanks to all contributors who have helped shape this project
+- Built with modern web technologies and best practices
+- Designed for optimal user experience and functionality
